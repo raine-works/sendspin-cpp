@@ -33,12 +33,9 @@ namespace sendspin {
 
 static const char* const TAG = "sendspin.source_task";
 
-/// @brief Same budget as the sync task. Host -O2 -fstack-usage measures the deepest task-path
-/// chain (stream -> send_chunk -> event wait) near 0.6 KB; the remainder is headroom for the
-/// ESP transport send path pending an on-target high-water measurement. Opus working buffers
-/// live on micro-opus's per-thread pseudostack, not here -- an assumption Kconfig enforces by
-/// refusing the source role under OPUS_USE_ALLOCA.
-static constexpr size_t SOURCE_TASK_STACK_SIZE = 6192;
+/// @brief Task stack size. Opus encoding call trees combined with Noise encryption (ChaCha20-Poly1305)
+/// and async HTTPD frame dispatch require 16-32 KB on Xtensa. Allocated in PSRAM when task_stack_in_psram is enabled.
+static constexpr size_t SOURCE_TASK_STACK_SIZE = 32768;
 
 /// @brief Ring receive timeout (ms) bounding how long the task waits before re-checking the
 /// stop/connection conditions; same cadence as the sync task's encoded-chunk receive
