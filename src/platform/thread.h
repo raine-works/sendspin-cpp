@@ -22,7 +22,9 @@
 
 #ifdef ESP_PLATFORM
 
+#include <esp_err.h>
 #include <esp_heap_caps.h>
+#include <esp_log.h>
 #include <esp_pthread.h>
 
 namespace sendspin {
@@ -41,9 +43,12 @@ inline void platform_configure_thread(const char* name, size_t stack_size, int p
     cfg.prio = priority;
     cfg.thread_name = name;
     if (stack_in_psram) {
-        cfg.stack_alloc_caps = MALLOC_CAP_SPIRAM;
+        cfg.stack_alloc_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
     }
-    esp_pthread_set_cfg(&cfg);
+    esp_err_t err = esp_pthread_set_cfg(&cfg);
+    if (err != ESP_OK) {
+        ESP_LOGE("sendspin.thread", "esp_pthread_set_cfg failed: %s (%d)", esp_err_to_name(err), err);
+    }
 }
 
 }  // namespace sendspin

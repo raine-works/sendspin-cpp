@@ -29,6 +29,11 @@
 #include <chrono>
 #include <cstring>
 
+#ifdef ESP_PLATFORM
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#endif
+
 namespace sendspin {
 
 static const char* const TAG = "sendspin.source_task";
@@ -255,6 +260,12 @@ void SourceTask::thread_entry(void* params) {
 }
 
 void SourceTask::run() {
+#ifdef ESP_PLATFORM
+    SS_LOGI(TAG, "Source task running (task: '%s', stack: %u, initial headroom: %u bytes)",
+            pcTaskGetName(nullptr),
+            static_cast<unsigned>(SOURCE_TASK_STACK_SIZE),
+            static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
+#endif
     this->event_flags_.set(SourceTaskBits::SOURCE_TASK_IDLE);
 
     while (true) {
