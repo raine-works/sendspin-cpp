@@ -232,19 +232,8 @@ bool SourceTask::write_audio(const uint8_t* data, size_t len, int64_t capture_ti
     }
     if (!this->capture_ring_->write_chunk(data, len, capture_time_us, CHUNK_TYPE_ENCODED_AUDIO,
                                           0)) {
-        // The ring bounds the stall backlog (capture_buffer_ms); warn once per overflow
-        // episode, the recovery log carries the total
         ++this->producer_dropped_writes_;
-        if (!this->producer_drop_episode_) {
-            this->producer_drop_episode_ = true;
-            SS_LOGW(TAG, "Capture ring full; dropping writes until it drains");
-        }
         return false;
-    }
-    if (this->producer_drop_episode_) {
-        this->producer_drop_episode_ = false;
-        SS_LOGI(TAG, "Capture resumed after dropping %u writes", this->producer_dropped_writes_);
-        this->producer_dropped_writes_ = 0;
     }
     this->producer_frame_warned_ = false;
     return true;

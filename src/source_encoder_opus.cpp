@@ -16,6 +16,7 @@
 
 #include "opus_state_location.h"
 #include "platform/logging.h"
+#include "platform/time.h"
 #include "source_task.h"
 #include <opus.h>
 
@@ -38,10 +39,14 @@ bool OpusSourceEncoder::init(const SourceRoleConfig& config) {
         return false;
     }
 
-    // AUDIO fixed for line-in/music capture; a tuning knob waits for a demonstrated need
+    // RESTRICTED_LOWDELAY bypasses speech SILK mode decision and runs pure CELT, ideal for ESP32 real-time
     int err = opus_encoder_init(this->encoder_state_.as<OpusEncoder>(),
                                 static_cast<opus_int32>(config.sample_rate), config.channels,
-                                OPUS_APPLICATION_AUDIO);
+                                OPUS_APPLICATION_RESTRICTED_LOWDELAY);
+    if (err == OPUS_OK) {
+        err = opus_encoder_ctl(this->encoder_state_.as<OpusEncoder>(),
+                               OPUS_SET_SIGNAL(OPUS_SIGNAL_MUSIC));
+    }
     if (err == OPUS_OK) {
         err = opus_encoder_ctl(this->encoder_state_.as<OpusEncoder>(),
                                OPUS_SET_BITRATE(static_cast<opus_int32>(config.opus_bitrate)));
@@ -112,9 +117,18 @@ size_t OpusSourceEncoder::encode(const uint8_t* in, size_t in_len, uint8_t* out,
     // degrade.
     const auto capacity =
         static_cast<opus_int32>(std::min(out_capacity, static_cast<size_t>(MAX_PACKET_BYTES)));
+    const int64_t t0 = platform_time_us();
     const opus_int32 written =
         opus_encode(this->encoder_state_.as<OpusEncoder>(), this->pcm_scratch_.as<opus_int16>(),
                     static_cast<int>(in_len / this->bytes_per_frame_), out, capacity);
+    const int64_t elapsed_us = platform_time_us() - t0;
+    static int64_t last_log_us = 0;
+    if (t0 - last_log_us >= 5000000) {
+        last_log_us = t0;
+        SS_LOGI(TAG, "Opus encode: %lld us (%u bytes in -> %d bytes out)",
+                static_cast<long long>(elapsed_us), static_cast<unsigned>(in_len),
+                static_cast<int>(written));
+    }
     if (written <= 0) {
         SS_LOGE(TAG, "Opus encode failed, error %d", static_cast<int>(written));
         return 0;
