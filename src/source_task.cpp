@@ -133,7 +133,7 @@ bool SourceTask::init(SourceRole::Impl* source_impl, SendspinClient* client,
     }
 
     if (!this->staging_.allocate(SOURCE_WIRE_HEADER_SIZE + payload_capacity,
-                                 config.buffer_location)) {
+                                 MemoryLocation::PREFER_INTERNAL)) {
         SS_LOGE(TAG, "Couldn't allocate chunk staging buffer.");
         return false;
     }
@@ -175,8 +175,9 @@ bool SourceTask::start(bool task_stack_in_psram, unsigned priority) {
         SourceTaskBits::SOURCE_COMMAND_UPDATE | SourceTaskBits::SOURCE_SEND_COMPLETE |
         SourceTaskBits::SOURCE_START_COMPLETE);
 
+    // Pin to Core 1 to isolate audio capture and Opus encoding from Core 0's Wi-Fi/flash/system interrupts
     platform_configure_thread("SsSrc", SOURCE_TASK_STACK_SIZE, static_cast<int>(priority),
-                              task_stack_in_psram);
+                              task_stack_in_psram, 1);
 
     this->task_thread_ = std::thread(thread_entry, this);
 

@@ -480,11 +480,9 @@ struct SourceRoleConfig {
     /// live capture rather than bursting stale audio
     static constexpr uint32_t DEFAULT_CAPTURE_BUFFER_MS = CHUNK_MAX_MS;
 
-    /// @brief Default FreeRTOS priority for the source task (ESP-IDF only). Below the HTTP
-    /// server task (SendspinClientConfig::DEFAULT_HTTPD_PRIORITY = 5) and the sync/decode task
-    /// (6) so outbound capture can never starve inbound playback, above the artwork/visualizer
-    /// drain threads (2)
-    static constexpr unsigned DEFAULT_SOURCE_TASK_PRIORITY = 3U;
+    /// @brief Default FreeRTOS priority for the source task (ESP-IDF only). Set to 6
+    /// (matching the playback sync task) so outbound encoding is not preempted by background tasks
+    static constexpr unsigned DEFAULT_SOURCE_TASK_PRIORITY = 6U;
 
     /// @brief Opus bitrate bounds in bit/s: the range libopus's OPUS_SET_BITRATE accepts
     static constexpr uint32_t OPUS_BITRATE_MIN = 500U;

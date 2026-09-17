@@ -67,6 +67,12 @@ bool OpusSourceEncoder::init(const SourceRoleConfig& config) {
             opus_encoder_ctl(this->encoder_state_.as<OpusEncoder>(),
                              OPUS_SET_COMPLEXITY(static_cast<opus_int32>(config.opus_complexity)));
     }
+    if (err == OPUS_OK) {
+        // Disabling inter-frame prediction reduces redundant search complexity and gives each
+        // chunk independent decoding, eliminating inter-packet dependencies for network streaming
+        err = opus_encoder_ctl(this->encoder_state_.as<OpusEncoder>(),
+                               OPUS_SET_PREDICTION_DISABLED(1));
+    }
     // OPUS_GET_LOOKAHEAD returns SAMPLES at the encoder's rate, not ms; stable for fixed
     // settings so queried once
     opus_int32 lookahead_samples = 0;

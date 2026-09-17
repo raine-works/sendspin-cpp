@@ -36,12 +36,16 @@ namespace sendspin {
 /// @param stack_size Stack size in bytes.
 /// @param priority FreeRTOS task priority.
 /// @param stack_in_psram If true, allocates the stack in PSRAM.
+/// @param pin_to_core Core affinity (0, 1, or -1 for tskNO_AFFINITY/default).
 inline void platform_configure_thread(const char* name, size_t stack_size, int priority,
-                                      bool stack_in_psram) {
+                                      bool stack_in_psram, int pin_to_core = -1) {
     esp_pthread_cfg_t cfg = esp_pthread_get_default_config();
     cfg.stack_size = stack_size;
     cfg.prio = priority;
     cfg.thread_name = name;
+    if (pin_to_core >= 0) {
+        cfg.pin_to_core = pin_to_core;
+    }
     if (stack_in_psram) {
         cfg.stack_alloc_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
     }
@@ -62,8 +66,9 @@ namespace sendspin {
 /// @param stack_size Ignored on host.
 /// @param priority Ignored on host.
 /// @param stack_in_psram Ignored on host.
+/// @param pin_to_core Ignored on host.
 inline void platform_configure_thread(const char* /*name*/, size_t /*stack_size*/, int /*priority*/,
-                                      bool /*stack_in_psram*/) {
+                                      bool /*stack_in_psram*/, int /*pin_to_core*/ = -1) {
     // No-op on host - std::thread uses OS defaults.
 }
 
