@@ -28,6 +28,17 @@ namespace sendspin {
 
 static const char* const TAG = "sendspin.source_encoder";
 
+#ifdef ESP_PLATFORM
+#include <esp_memory_utils.h>
+static inline const char* buffer_location_str(const void* ptr) {
+    return esp_ptr_external_ram(ptr) ? "PSRAM" : "internal SRAM";
+}
+#else
+static inline const char* buffer_location_str(const void* /*ptr*/) {
+    return "RAM";
+}
+#endif
+
 bool OpusSourceEncoder::init(const SourceRoleConfig& config) {
     this->sample_rate_ = config.sample_rate;
     this->bytes_per_frame_ = source_bytes_per_frame(config.channels, config.bit_depth);
@@ -71,14 +82,23 @@ bool OpusSourceEncoder::init(const SourceRoleConfig& config) {
     this->lookahead_us_ =
         source_frames_to_us(static_cast<uint64_t>(lookahead_samples), config.sample_rate);
 
-    // Both scratches follow the audio buffers' placement choice (same bytes, same access)
+    // Chunk scratch placed in fast internal SRAM for low-latency memory access during encoding
     const uint64_t chunk_bytes =
         source_ms_to_frames(config.chunk_duration_ms, config.sample_rate) * this->bytes_per_frame_;
-    if (!this->pcm_scratch_.allocate(static_cast<size_t>(chunk_bytes), config.buffer_location)) {
+    if (!this->pcm_scratch_.allocate(static_cast<size_t>(chunk_bytes),
+                                     MemoryLocation::PREFER_INTERNAL)) {
         SS_LOGE(TAG, "Couldn't allocate the Opus chunk scratch buffer");
         this->encoder_state_.reset();
         return false;
     }
+    SS_LOGI(TAG,
+            "Opus encoder init: %u Hz, %u ch, complexity %u, bitrate %u, state=%d B in %s, "
+            "pcm_scratch=%u B in %s",
+            static_cast<unsigned>(config.sample_rate), static_cast<unsigned>(config.channels),
+            static_cast<unsigned>(config.opus_complexity),
+            static_cast<unsigned>(config.opus_bitrate), state_size,
+            buffer_location_str(this->encoder_state_.data()), static_cast<unsigned>(chunk_bytes),
+            buffer_location_str(this->pcm_scratch_.data()));
     return true;
 }
 
